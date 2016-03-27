@@ -69,6 +69,9 @@ static void estab_handler(void *arg)
 	if (0 == tls_peer_common_name(client->sc, cn, sizeof(cn))) {
 		re_printf("Common name:    %s\n", cn);
 	}
+
+	/* Stop the main loop and exit */
+	re_cancel();
 }
 
 
@@ -367,10 +370,8 @@ int main(int argc, char *argv[])
 	mem_debug();
 	tmr_debug();
 
-	if (!client->estab) {
-		re_fprintf(stderr, "connection not established\n");
-		return 1;
-	}
+	if (err)
+		return err;
 
-	return err;
+	return g_client.estab ? 0 : 2;
 }
