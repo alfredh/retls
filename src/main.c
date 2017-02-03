@@ -147,6 +147,11 @@ static int start(struct client *client)
 			re_fprintf(stderr, "TLS start failed (%m)\n", err);
 			return err;
 		}
+		err = tls_set_servername(client->sc, client->host);
+		if (err) {
+			re_fprintf(stderr, "setting SNI failed (%m)\n", err);
+			return err;
+		}
 		break;
 
 	case IPPROTO_UDP:
