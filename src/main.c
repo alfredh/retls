@@ -21,6 +21,7 @@ static struct client {
 	char host[256];
 	uint16_t port;
 	bool estab;
+	bool quiet;
 	int proto;
 	int err;
 
@@ -61,13 +62,18 @@ static void estab_handler(void *arg)
 
 	client->estab = true;
 
-	re_printf("TLS connection established with"
-		  " cipher %s in %d milliseconds\n",
-		  tls_cipher_name(client->sc),
-		  (int)(now - client->ts_start));
+	if (!client->quiet) {
+		re_printf("TLS connection established with"
+			  " cipher %s in %d milliseconds\n",
+			  tls_cipher_name(client->sc),
+			  (int)(now - client->ts_start));
+	}
 
 	if (0 == tls_peer_common_name(client->sc, cn, sizeof(cn))) {
-		re_printf("Common name:    %s\n", cn);
+
+		if (!client->quiet) {
+			re_printf("Common name:    %s\n", cn);
+		}
 	}
 
 	/* Stop the main loop and exit */
@@ -200,7 +206,9 @@ static void query_handler(int err, const struct dnshdr *hdr, struct list *ansl,
 		return;
 	}
 
-	re_printf("resolved host: %j\n", &client->srv);
+	if (!client->quiet) {
+		re_printf("resolved host: %j\n", &client->srv);
+	}
 
 	err = start(client);
 	if (err)
@@ -243,6 +251,7 @@ static void usage(void)
 		   "retls -u TLS-server:port\n"
 		   "\t-h            Show summary of options\n"
 		   "\t-u            Use DTLS over UDP\n"
+		   "\t-q            Quiet\n"
 		   );
 }
 
@@ -258,7 +267,7 @@ int main(int argc, char *argv[])
 
 	for (;;) {
 
-		const int c = getopt(argc, argv, "hu");
+		const int c = getopt(argc, argv, "huq");
 		if (0 > c)
 			break;
 
@@ -266,6 +275,10 @@ int main(int argc, char *argv[])
 
 		case 'u':
 			client->proto = IPPROTO_UDP;
+			break;
+
+		case 'q':
+			client->quiet = true;
 			break;
 
 		case '?':
@@ -301,7 +314,10 @@ int main(int argc, char *argv[])
 		goto out;
 	}
 
-	re_printf("connecting to %s:%u ...\n", client->host, client->port);
+	if (!client->quiet) {
+		re_printf("connecting to %s:%u ...\n",
+			  client->host, client->port);
+	}
 
 	switch (client->proto) {
 
@@ -339,7 +355,9 @@ int main(int argc, char *argv[])
 			goto out;
 	}
 	else {
-		re_printf("resolving host %s ...\n", client->host);
+		if (!client->quiet) {
+			re_printf("resolving host %s ...\n", client->host);
+		}
 
 		err = dnsc_query(NULL, dnsc, client->host,
 				 DNS_TYPE_A, DNS_CLASS_IN,
