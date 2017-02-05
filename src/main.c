@@ -257,6 +257,7 @@ static void usage(void)
 		   "\t-h            Show summary of options\n"
 		   "\t-u            Use DTLS over UDP\n"
 		   "\t-q            Quiet\n"
+		   "\t-c <cipher>   Use a specific TLS cipher\n"
 		   );
 }
 
@@ -266,17 +267,22 @@ int main(int argc, char *argv[])
 	struct client *client = &g_client;
 	struct dnsc *dnsc = NULL;
 	const char *server;
+	const char *cipher = NULL;
 	enum tls_method method;
 	struct pl pl_host, pl_port;
 	int err = 0;
 
 	for (;;) {
 
-		const int c = getopt(argc, argv, "huq");
+		const int c = getopt(argc, argv, "c:huq");
 		if (0 > c)
 			break;
 
 		switch (c) {
+
+		case 'c':
+			cipher = optarg;
+			break;
 
 		case 'u':
 			client->proto = IPPROTO_UDP;
@@ -343,6 +349,16 @@ int main(int argc, char *argv[])
 	if (err) {
 		re_fprintf(stderr, "could not create TLS context (%m)\n", err);
 		goto out;
+	}
+
+	if (cipher) {
+		re_printf("using TLS cipher: %s\n", cipher);
+		err = tls_set_ciphers(client->tls, &cipher, 1);
+		if (err) {
+			re_fprintf(stderr, "could not set cipher '%s' (%m)\n",
+				   cipher, err);
+			goto out;
+		}
 	}
 
 	err = dns_init(&dnsc);
